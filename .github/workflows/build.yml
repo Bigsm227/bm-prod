@@ -6,10 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, macos-13]
+    runs-on: macos-12
 
     steps:
     - name: Récupérer le code
@@ -25,26 +22,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller
 
-    - name: Compiler avec PyInstaller (Windows)
-      if: runner.os == 'Windows'
+    - name: Compiler avec PyInstaller pour macOS 10+
       run: |
+        export MACOSX_DEPLOYMENT_TARGET=10.15
         pyinstaller --noconsole --onefile --name="BM_PROD" app.py
 
-    - name: Compiler avec PyInstaller (macOS Catalina)
-      if: runner.os == 'macOS'
-      run: |
-        pyinstaller --noconsole --onefile --name="BM_PROD_MAC" app.py
-
-    - name: Sauvegarder l'exécutable Windows
-      if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v4
-      with:
-        name: application-windows
-        path: dist/BM_PROD.exe
-
-    - name: Sauvegarder l'application macOS Catalina
-      if: runner.os == 'macOS'
+    - name: Sauvegarder l'application macOS
       uses: actions/upload-artifact@v4
       with:
         name: application-macos-catalina
-        path: dist/BM_PROD_MAC.app
+        path: dist/BM_PROD.app
