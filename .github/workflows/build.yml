@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-12
+    runs-on: macos-13
 
     steps:
     - name: Récupérer le code
@@ -22,9 +22,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller
 
-    - name: Compiler avec PyInstaller pour macOS 10+
+    - name: Compiler avec PyInstaller pour Mac
       run: |
-        export MACOSX_DEPLOYMENT_TARGET=10.15
         pyinstaller --noconsole --onefile --name="BM_PROD" app.py
 
     - name: Sauvegarder l'application macOS
