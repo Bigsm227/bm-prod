@@ -9,7 +9,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-13]
 
     steps:
     - name: Récupérer le code
@@ -28,15 +28,23 @@ jobs:
     - name: Compiler avec PyInstaller (Windows)
       if: runner.os == 'Windows'
       run: |
-        pyinstaller --noconsole --onefile --add-data "bm_prod.db;." app.py
+        pyinstaller --noconsole --onefile --name="BM_PROD" app.py
 
-    - name: Compiler avec PyInstaller (Mac)
+    - name: Compiler avec PyInstaller (macOS Catalina)
       if: runner.os == 'macOS'
       run: |
-        pyinstaller --noconsole --onefile --add-data "bm_prod.db:." app.py
+        pyinstaller --noconsole --onefile --name="BM_PROD_MAC" app.py
 
-    - name: Sauvegarder l'exécutable généré
+    - name: Sauvegarder l'exécutable Windows
+      if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
-        name: app-${{ matrix.os }}
-        path: dist/
+        name: application-windows
+        path: dist/BM_PROD.exe
+
+    - name: Sauvegarder l'application macOS Catalina
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v4
+      with:
+        name: application-macos-catalina
+        path: dist/BM_PROD_MAC.app
