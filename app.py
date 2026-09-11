@@ -1,6 +1,9 @@
+import base64
 import os
+import shutil
 import sqlite3
 import sys
+import tempfile
 import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
 
@@ -12,8 +15,6 @@ if getattr(sys, "frozen", False):
     BASE_DB = os.path.join(dossier_app, "bm_prod.db")
 
     if not os.path.exists(BASE_DB):
-        import shutil
-
         chemin_origine = os.path.join(os.path.dirname(sys.executable), "bm_prod.db")
         if os.path.exists(chemin_origine):
             shutil.copy(chemin_origine, BASE_DB)
@@ -1363,6 +1364,30 @@ class ApplicationBMProd:
 
         self.table_artistes.pack(fill="both", expand=True)
 
+        # --- BOUTON DE MISE À JOUR DU PAIEMENT ---
+        cadre_actions = tk.Frame(cadre_conteneur, bg=self.c_card)
+        cadre_actions.pack(fill="x", pady=10)
+
+        btn_modifier = tk.Button(
+            cadre_actions,
+            text="💰 Mettre à jour le paiement (Solder la dette)",
+            command=self.changer_statut_selection,
+            bg="#2ecc71",
+            fg="#ffffff",
+            font=("Helvetica", 10, "bold"),
+            padx=15,
+            pady=5,
+            relief="flat",
+            cursor="hand2",
+        )
+        btn_modifier.pack(side="left", padx=5)
+
+        self.rafraichir_table_artistes()
+
+    def rafraichir_table_artistes(self):
+        for item in self.table_artistes.get_children():
+            self.table_artistes.delete(item)
+
         conn = sqlite3.connect(BASE_DB)
         cursor = conn.cursor()
         cursor.execute(
@@ -1371,6 +1396,49 @@ class ApplicationBMProd:
         for row in cursor.fetchall():
             self.table_artistes.insert("", "end", values=row)
         conn.close()
+
+    def changer_statut_selection(self):
+        selected_item = self.table_artistes.selection()
+        if not selected_item:
+            messagebox.showwarning("Attention", "Veuillez sélectionner un artiste dans le tableau !")
+            return
+
+        item_values = self.table_artistes.item(selected_item[0], "values")
+        nom_artiste = item_values[0]
+        tarif_total = float(item_values[8])
+        verse_actuel = float(item_values[9])
+        num_facture = item_values[12]
+
+        nouveau_verse_str = simpledialog.askstring(
+            "Mise à jour Paiement",
+            f"Artiste : {nom_artiste} (Facture N° {num_facture})\nTarif Total : {tarif_total:,.0f} XOF\n\nEntrez la nouvelle somme totale versée :",
+            initialvalue=str(verse_actuel)
+        )
+
+        if nouveau_verse_str is None:
+            return  # Annulation
+
+        try:
+            nouveau_verse = float(nouveau_verse_str)
+        except ValueError:
+            messagebox.showerror("Erreur", "Veuillez entrer un chiffre valide.")
+            return
+
+        restant = tarif_total - nouveau_verse
+        statut = "PAYER" if restant <= 0 else "NON PAYER"
+
+        conn = sqlite3.connect(BASE_DB)
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE artistes 
+            SET somme_versee = ?, somme_restante = ?, statut = ? 
+            WHERE num_facture = ?
+        """, (nouveau_verse, restant, statut, num_facture))
+        conn.commit()
+        conn.close()
+
+        messagebox.showinfo("Succès", f"Paiement mis à jour !\nNouveau statut : {statut}")
+        self.rafraichir_table_artistes()
 
     def creer_ecran_nos_tarifs(self):
         self.creer_entete_nav("NOS TARIFS - BM PROD")
@@ -2271,10 +2339,6 @@ class ApplicationBMProd:
         ).pack()
 
     def imprimer_facture(self):
-        import tempfile
-        import os
-        import base64
-
         num_str = self.e_facture_num.get().strip()
         if not num_str:
             messagebox.showwarning(
